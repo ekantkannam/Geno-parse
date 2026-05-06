@@ -27,94 +27,154 @@ fn get_writer(output: &Option<String>) -> Box<dyn Write> {
 
 /// Displays the application banner and basic usage information.
 fn print_banner() {
-    println!(r#"
+    println!(
+        r#"
   ╔═══════════════════════════════════════════════════╗
   ║         geno-parse v0.1.0  ⚡ Genomics CLI         ║
   ║        FASTQ and VCF Parsing & Quality Control   ║
   ╚═══════════════════════════════════════════════════╝
-"#);
+"#
+    );
 }
 
 fn main() {
+    // Suppress SIGPIPE panics (e.g., when piped to `head`)
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
+
     let cli = Cli::parse();
 
-    match cli.command {
-        Commands::FastqQc {
-            input,
-            output,
-            threads,
-            min_quality,
-            min_length,
-            format,
-        } => {
-            eprintln!("⚡ Running FASTQ-QC on: {}", input);
-            eprintln!("   Threads: {}  |  Min Quality: {}  |  Min Length: {}", threads, min_quality, min_length);
+    if cli.schema {
+        output::print_schemas();
+        std::process::exit(0);
+    }
 
-            match fastq::run_fastq_qc(&input, min_quality, min_length, threads) {
-                Ok(summary) => {
-                    eprintln!(
-                        "✅ Done: {}/{} reads passed ({} failed)",
-                        summary.passed_reads, summary.total_reads, summary.failed_reads
-                    );
-                    let mut writer = get_writer(&output);
-                    if let Err(e) = output::write_fastq_output(&summary, &format, &mut writer) {
-                        eprintln!("❌ Output error: {}", e);
+    if let Some(cmd) = cli.command {
+        match cmd {
+            Commands::FastqQc {
+                input,
+                input2,
+                output,
+                threads,
+                min_quality,
+                min_length,
+                adapter1,
+                adapter2,
+                benchmark,
+                format,
+            } => {
+                eprintln!("⚡ Running FASTQ-QC on: {}", input);
+                if let Some(ref i2) = input2 {
+                    eprintln!("   Paired with: {}", i2);
+                }
+                eprintln!(
+                    "   Threads: {}  |  Min Quality: {}  |  Min Length: {}",
+                    threads, min_quality, min_length
+                );
+
+                match fastq::run_fastq_qc(
+                    &input,
+                    input2.as_deref(),
+                    min_quality,
+                    min_length,
+                    adapter1.as_deref(),
+                    adapter2.as_deref(),
+                    threads,
+                    benchmark,
+                ) {
+                    Ok(summary) => {
+                        eprintln!(
+                            "✅ Done: {}/{} reads passed ({} failed)",
+                            summary.passed_reads, summary.total_reads, summary.failed_reads
+                        );
+                        let mut writer = get_writer(&output);
+                        if let Err(e) = output::write_fastq_output(&summary, &format, &mut writer) {
+                            if let errors::GenoError::Io(ref source) = e {
+                                if source.kind() == std::io::ErrorKind::BrokenPipe {
+                                    std::process::exit(0);
+                                }
+                            }
+                            eprintln!("❌ Output error: {}", e);
+                            std::process::exit(1);
+                        }
+                        if let Err(e) = writer.flush() {
+                            if e.kind() == std::io::ErrorKind::BrokenPipe {
+                                std::process::exit(0);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Error: {}", e);
                         std::process::exit(1);
                     }
                 }
-                Err(e) => {
-                    eprintln!("❌ Error: {}", e);
-                    std::process::exit(1);
-                }
             }
-        }
 
-        Commands::VcfSummary {
-            input,
-            output,
-            format,
-            min_qual,
-        } => {
-            eprintln!("⚡ Running VCF-Summary on: {}", input);
-            eprintln!("   Min QUAL: {}", min_qual);
+            Commands::VcfSummary {
+                input,
+                output,
+                format,
+                min_qual,
+                benchmark,
+            } => {
+                eprintln!("⚡ Running VCF-Summary on: {}", input);
+                eprintln!("   Min QUAL: {}", min_qual);
 
-            match vcf::run_vcf_summary(&input, min_qual) {
-                Ok(summary) => {
-                    eprintln!(
-                        "✅ Done: {} variants found (SNPs: {}, INS: {}, DEL: {})",
-                        summary.total_variants, summary.snps, summary.insertions, summary.deletions
-                    );
-                    let mut writer = get_writer(&output);
-                    if let Err(e) = output::write_vcf_output(&summary, &format, &mut writer) {
-                        eprintln!("❌ Output error: {}", e);
+                match vcf::run_vcf_summary(&input, min_qual, benchmark) {
+                    Ok(summary) => {
+                        eprintln!(
+                            "✅ Done: {} variants found (SNPs: {}, INS: {}, DEL: {})",
+                            summary.total_variants,
+                            summary.snps,
+                            summary.insertions,
+                            summary.deletions
+                        );
+                        let mut writer = get_writer(&output);
+                        if let Err(e) = output::write_vcf_output(&summary, &format, &mut writer) {
+                            if let errors::GenoError::Io(ref source) = e {
+                                if source.kind() == std::io::ErrorKind::BrokenPipe {
+                                    std::process::exit(0);
+                                }
+                            }
+                            eprintln!("❌ Output error: {}", e);
+                            std::process::exit(1);
+                        }
+                        if let Err(e) = writer.flush() {
+                            if e.kind() == std::io::ErrorKind::BrokenPipe {
+                                std::process::exit(0);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Error: {}", e);
                         std::process::exit(1);
                     }
                 }
-                Err(e) => {
-                    eprintln!("❌ Error: {}", e);
-                    std::process::exit(1);
-                }
+            }
+
+            Commands::Info => {
+                print_banner();
+                println!("  Subcommands:");
+                println!("    fastq-qc      Quality control & filtering of FASTQ files");
+                println!("    vcf-summary   Parse and summarize VCF variant files");
+                println!();
+                println!("  Features:");
+                println!("    ✓ Multi-threaded parallel processing (Rayon & Crossbeam)");
+                println!("    ✓ Gzip-compressed input (.gz) support via BGZF");
+                println!("    ✓ TSV and JSON output formats with robust schema");
+                println!("    ✓ Phred quality scoring & Adapter Trimming");
+                println!("    ✓ GC content calculation & Paired-End metrics");
+                println!("    ✓ SNP / INDEL / MNP variant classification");
+                println!();
+                println!("  Usage examples:");
+                println!("    geno-parse fastq-qc -i sample_R1.fastq -I sample_R2.fastq -q 20 -l 50 -t 8");
+                println!("    geno-parse fastq-qc -i sample.fastq.gz -f json -o results.json");
+                println!("    geno-parse vcf-summary -i variants.vcf -q 30 -f tsv");
             }
         }
-
-        Commands::Info => {
-            print_banner();
-            println!("  Subcommands:");
-            println!("    fastq-qc      Quality control & filtering of FASTQ files");
-            println!("    vcf-summary   Parse and summarize VCF variant files");
-            println!();
-            println!("  Features:");
-            println!("    ✓ Multi-threaded parallel processing (Rayon)");
-            println!("    ✓ Gzip-compressed input (.gz) support");
-            println!("    ✓ TSV and JSON output formats");
-            println!("    ✓ Phred quality scoring");
-            println!("    ✓ GC content calculation");
-            println!("    ✓ SNP / INDEL / MNP variant classification");
-            println!();
-            println!("  Usage examples:");
-            println!("    geno-parse fastq-qc -i sample.fastq -q 20 -l 50 -t 8");
-            println!("    geno-parse fastq-qc -i sample.fastq.gz -f json -o results.json");
-            println!("    geno-parse vcf-summary -i variants.vcf -q 30 -f tsv");
-        }
+    } else {
+        print_banner();
+        println!("Run `geno-parse --help` for usage instructions.");
     }
 }
