@@ -2,8 +2,11 @@
 name = "geno-parse"
 version = "0.1.0"
 edition = "2021"
-authors = ["Genomic Engine"]
-description = "High-Performance Genomic Parsing Engine for FASTQ, VCF, and BAM files"
+authors = ["Ekant Kannam"]
+description = "Fast, memory-safe CLI tool for FASTQ and VCF parsing and quality control"
+license = "MIT"
+repository = "https://github.com/ekantkannam/geno-parse"
+keywords = ["genomics", "bioinformatics", "fastq", "vcf", "sequencing"]
 
 [[bin]]
 name = "geno-parse"

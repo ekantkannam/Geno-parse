@@ -1,4 +1,18 @@
-//! VCF (Variant Call Format) parser and summarizer
+//! VCF (Variant Call Format) parser and summarizer.
+//!
+//! This module provides functionality to parse VCF files and classify variants into SNP,
+//! insertion, deletion, MNP, and complex categories. It supports filtering by QUAL score
+//! and provides per-chromosome statistics.
+//!
+//! # Examples
+//!
+//! ```no_run
+//! use geno_parse::vcf;
+//! 
+//! let summary = vcf::run_vcf_summary("variants.vcf", 30.0)?;
+//! println!("SNPs: {}, Insertions: {}", summary.snps, summary.insertions);
+//! # Ok::<(), geno_parse::errors::GenoError>(())
+//! ```
 
 use crate::errors::{GenoError, Result};
 use std::fs::File;

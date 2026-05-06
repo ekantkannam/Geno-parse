@@ -1,4 +1,17 @@
-//! FASTQ file parser with quality control and filtering
+//! FASTQ file parser with quality control and filtering.
+//!
+//! This module provides functionality to parse FASTQ files and calculate per-read quality metrics.
+//! It supports gzip-compressed input and uses Rayon for parallel processing of large datasets.
+//!
+//! # Examples
+//!
+//! ```no_run
+//! use geno_parse::fastq;
+//! 
+//! let summary = fastq::run_fastq_qc("reads.fastq", 20.0, 50, 4)?;
+//! println!("Passed: {}, Failed: {}", summary.passed_reads, summary.failed_reads);
+//! # Ok::<(), geno_parse::errors::GenoError>(())
+//! ```
 
 use crate::errors::{GenoError, Result};
 use flate2::read::GzDecoder;

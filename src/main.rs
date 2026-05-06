@@ -1,5 +1,7 @@
-//! geno-parse — High-Performance Genomic Parsing Engine
-//! Entry point: routes CLI subcommands to appropriate modules.
+//! geno-parse: Fast genomic data parsing and quality control
+//!
+//! A lightweight CLI tool for FASTQ and VCF processing in genomic analysis workflows.
+//! Routes subcommands to appropriate processing modules and manages output formatting.
 
 mod cli;
 mod errors;
@@ -12,6 +14,7 @@ use cli::{Cli, Commands};
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 
+/// Creates an output writer that writes to either a file or stdout.
 fn get_writer(output: &Option<String>) -> Box<dyn Write> {
     match output {
         Some(path) => {
@@ -22,11 +25,12 @@ fn get_writer(output: &Option<String>) -> Box<dyn Write> {
     }
 }
 
+/// Displays the application banner and basic usage information.
 fn print_banner() {
     println!(r#"
   ╔═══════════════════════════════════════════════════╗
-  ║        geno-parse v0.1.0  ⚡ Genomic Engine       ║
-  ║   High-Performance FASTQ · VCF · BAM Processing  ║
+  ║         geno-parse v0.1.0  ⚡ Genomics CLI         ║
+  ║        FASTQ and VCF Parsing & Quality Control   ║
   ╚═══════════════════════════════════════════════════╝
 "#);
 }
