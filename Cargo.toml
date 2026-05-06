@@ -1,0 +1,31 @@
+[package]
+name = "geno-parse"
+version = "0.1.0"
+edition = "2021"
+authors = ["Genomic Engine"]
+description = "High-Performance Genomic Parsing Engine for FASTQ, VCF, and BAM files"
+
+[[bin]]
+name = "geno-parse"
+path = "src/main.rs"
+
+[lib]
+name = "geno_parse"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "=4.4.18", features = ["derive"] }
+rayon = "1.8"
+flate2 = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+memchr = "2.6"
+
+[dev-dependencies]
+tempfile = "3.8"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
