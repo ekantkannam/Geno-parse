@@ -1,4 +1,6 @@
 # geno-parse
+Development Status: Early-Stage / Pre-Production. Please be aware that this software is under active development. The current implementation is an early version, and significant changes to the functionality, APIs, and overall structure should be expected in future updates.
+
 
 A lightweight, memory-safe CLI tool written in Rust for parsing, filtering, and quality control of genomic data.
 Designed for bioinformaticians who need fast preprocessing of sequencing data without heavyweight dependencies.
@@ -199,3 +201,4 @@ Potential future features:
 - Statistical summaries (coverage, depth)
 - HTML report generation
 - Parallel file processing
+
